@@ -1,0 +1,11 @@
+bin/
+.idea/
+dev/
+.env
+.env.*
+.vscode/
+__debug_bin
+.DS_Store
+vendor/
+# Added by goreleaser init:
+dist/

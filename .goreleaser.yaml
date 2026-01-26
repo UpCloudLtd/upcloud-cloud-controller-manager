@@ -1,0 +1,34 @@
+project_name: upcloud-cloud-controller-manager
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    binary: cloud-controller-manager
+    main: ./cmd/upcloud-cloud-controller-manager
+    goos:
+      - linux
+    goarch:
+      - amd64
+    ldflags:
+      - -w -s
+      - -X k8s.io/component-base/version.gitVersion=v{{.Version}}
+      - -X k8s.io/component-base/version.gitCommit={{.FullCommit}}
+      - -X "k8s.io/component-base/version/verflag.programName=UpCloud cloud controller manager"
+
+dockers:
+  - image_templates:
+      - "ghcr.io/upcloudltd/cloud-controller-manager:v{{.Version}}"
+    dockerfile: Dockerfile
+    use: docker
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source={{.GitURL}}"
+    goarch: amd64
+    goos: linux
+
+release:
+  draft: true
