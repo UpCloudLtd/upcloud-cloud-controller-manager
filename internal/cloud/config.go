@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/UpCloudLtd/upcloud-cloud-controller-manager/internal/loadbalancer"
-	"gopkg.in/yaml.v2"
+	"go.yaml.in/yaml/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
