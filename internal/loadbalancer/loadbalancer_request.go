@@ -28,6 +28,7 @@ type replaceLoadBalancerRequest struct {
 	Labels           []upcloud.Label                      `json:"labels,omitempty"`
 	MaintenanceDOW   upcloud.LoadBalancerMaintenanceDOW   `json:"maintenance_dow,omitempty"`
 	MaintenanceTime  string                               `json:"maintenance_time,omitempty"`
+	IPAddresses      []request.LoadBalancerIPAddress      `json:"ip_addresses"`
 }
 
 func (r *replaceLoadBalancerRequest) RequestURL() string {
@@ -60,7 +61,8 @@ func createLoadBalancerRequest(service *v1.Service, nodes []*v1.Node, plan upclo
 			},
 		},
 		ConfiguredStatus: upcloud.LoadBalancerConfiguredStatusStarted,
-		Resolvers:        []request.LoadBalancerResolver{},
+		Resolvers:        make([]request.LoadBalancerResolver, 0),
+		IPAddresses:      make([]request.LoadBalancerIPAddress, 0),
 	}
 	r.Frontends = make([]request.LoadBalancerFrontend, len(service.Spec.Ports))
 	r.Backends = make([]request.LoadBalancerBackend, len(service.Spec.Ports))
@@ -220,6 +222,13 @@ func loadBalancerToCreateRequest(lb *upcloud.LoadBalancer) *request.CreateLoadBa
 			CacheInvalid: lb.Resolvers[i].CacheInvalid,
 		}
 	}
+	ipAddresses := make([]request.LoadBalancerIPAddress, len(lb.IPAddresses))
+	for i := range ipAddresses {
+		ipAddresses[i] = request.LoadBalancerIPAddress{
+			NetworkName: lb.IPAddresses[i].NetworkName,
+			Address:     lb.IPAddresses[i].Address,
+		}
+	}
 	return &request.CreateLoadBalancerRequest{
 		Name:             lb.Name,
 		Plan:             lb.Plan,
@@ -233,5 +242,6 @@ func loadBalancerToCreateRequest(lb *upcloud.LoadBalancer) *request.CreateLoadBa
 		Labels:           lb.Labels,
 		MaintenanceDOW:   lb.MaintenanceDOW,
 		MaintenanceTime:  lb.MaintenanceTime,
+		IPAddresses:      ipAddresses,
 	}
 }

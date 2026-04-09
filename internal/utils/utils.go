@@ -1,5 +1,5 @@
 // Package utils contains common utility functions that are used by multiple internal packages.
-package utils //nolint:revive
+package utils
 
 import (
 	"encoding/json"

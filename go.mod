@@ -1,11 +1,11 @@
 module github.com/UpCloudLtd/upcloud-cloud-controller-manager
 
-go 1.24.6
+go 1.25
 
 require (
-	github.com/UpCloudLtd/upcloud-go-api/v8 v8.20.0
+	github.com/UpCloudLtd/upcloud-go-api/v8 v8.35.0
 	github.com/google/uuid v1.6.0
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.31.10
 	k8s.io/apimachinery v0.31.10

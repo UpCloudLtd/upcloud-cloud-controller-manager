@@ -2,6 +2,7 @@ package loadbalancer_test
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/UpCloudLtd/upcloud-cloud-controller-manager/internal/mock"
 	"github.com/UpCloudLtd/upcloud-cloud-controller-manager/internal/utils"
 	"github.com/UpCloudLtd/upcloud-go-api/v8/upcloud"
+	"github.com/UpCloudLtd/upcloud-go-api/v8/upcloud/request"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -29,23 +31,13 @@ func TestLoadBalancer(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	m, err := initManager(ctx)
+	m, err := newManager(ctx)
 	require.NoError(t, err)
 
 	service := v1.Service{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-service", Namespace: "default"},
 	}
-	nodes := []*v1.Node{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "node-1",
-				Annotations: map[string]string{
-					utils.PrivateNetworkUUIDAnnotation: uuid.NewString(),
-				},
-			},
-			Spec: v1.NodeSpec{ProviderID: serverUUID},
-		},
-	}
+	nodes := newNodes()
 
 	t.Run("EnsureLoadBalancer", func(t *testing.T) {
 		status, err := m.EnsureLoadBalancer(ctx, "", &service, nodes)
@@ -90,23 +82,56 @@ func TestLoadBalancer(t *testing.T) {
 	})
 }
 
-func initManager(ctx context.Context) (cloudprovider.LoadBalancer, error) {
-	client := mock.NewControllerClientBuilder().ClientOrDie("test-client")
-	upcs := mock.NewUpCloudService(
-		upcloud.ServerDetails{Server: upcloud.Server{UUID: uuid.NewString()}},
-		upcloud.ServerDetails{Server: upcloud.Server{UUID: uuid.NewString()}},
-		upcloud.ServerDetails{
-			Server: upcloud.Server{UUID: serverUUID, State: upcloud.ServerStateStopped},
-			Networking: upcloud.ServerNetworking{
-				Interfaces: upcloud.ServerInterfaceSlice{
-					{
-						Type:        upcloud.NetworkTypePrivate,
-						IPAddresses: upcloud.IPAddressSlice{{Address: "10.0.0.10"}},
-					},
-				},
+func TestLoadBalancerCustomConfig(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	upcs := newUpCloudMockService()
+
+	m, err := newManagerWithService(ctx, upcs)
+	require.NoError(t, err)
+
+	config := &request.CreateLoadBalancerRequest{
+		IPAddresses: []request.LoadBalancerIPAddress{
+			{
+				NetworkName: "public-IPv4",
+				Address:     "0.0.0.0",
 			},
 		},
-	)
+	}
+	service := v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-service",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"service.beta.kubernetes.io/upcloud-load-balancer-config": loadBalancerRequestToJSON(t, config),
+			},
+		},
+	}
+	nodes := newNodes()
+
+	t.Run("IPAddresses", func(t *testing.T) {
+		_, err := m.EnsureLoadBalancer(ctx, "", &service, nodes)
+		require.NoError(t, err)
+		lbs, err := upcs.GetLoadBalancers(ctx, &request.GetLoadBalancersRequest{})
+		require.NoError(t, err)
+		require.Len(t, lbs, 1)
+		lb := lbs[0]
+		require.Len(t, lb.IPAddresses, 1)
+		require.Equal(t, config.IPAddresses[0].NetworkName, lb.IPAddresses[0].NetworkName)
+		require.Equal(t, config.IPAddresses[0].Address, lb.IPAddresses[0].Address)
+	})
+}
+
+func newManager(ctx context.Context) (cloudprovider.LoadBalancer, error) {
+	upcs := newUpCloudMockService()
+	return newManagerWithService(ctx, upcs)
+}
+
+func newManagerWithService(ctx context.Context, upcs loadbalancer.UpCloudService) (cloudprovider.LoadBalancer, error) {
+	client := mock.NewControllerClientBuilder().ClientOrDie("test-client")
 	if _, err := client.CoreV1().Services("default").Create(ctx, &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-service"},
 		Spec: v1.ServiceSpec{
@@ -124,4 +149,43 @@ func initManager(ctx context.Context) (cloudprovider.LoadBalancer, error) {
 	eventRecorder := broadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "service-controller"})
 	log := logger.NewKlog()
 	return loadbalancer.NewLoadBalancerManager(loadBalancerService, config, client.CoreV1(), eventRecorder, log), nil
+}
+
+func newUpCloudMockService() *mock.UpCloudService {
+	return mock.NewUpCloudService(
+		upcloud.ServerDetails{Server: upcloud.Server{UUID: uuid.NewString()}},
+		upcloud.ServerDetails{Server: upcloud.Server{UUID: uuid.NewString()}},
+		upcloud.ServerDetails{
+			Server: upcloud.Server{UUID: serverUUID, State: upcloud.ServerStateStopped},
+			Networking: upcloud.ServerNetworking{
+				Interfaces: upcloud.ServerInterfaceSlice{
+					{
+						Type:        upcloud.NetworkTypePrivate,
+						IPAddresses: upcloud.IPAddressSlice{{Address: "10.0.0.10"}},
+					},
+				},
+			},
+		},
+	)
+}
+
+func newNodes() []*v1.Node {
+	return []*v1.Node{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "node-1",
+				Annotations: map[string]string{
+					utils.PrivateNetworkUUIDAnnotation: uuid.NewString(),
+				},
+			},
+			Spec: v1.NodeSpec{ProviderID: serverUUID},
+		},
+	}
+}
+
+func loadBalancerRequestToJSON(t *testing.T, r *request.CreateLoadBalancerRequest) string {
+	t.Helper()
+	b, err := json.MarshalIndent(r, "", "\t")
+	require.NoError(t, err)
+	return string(b)
 }
