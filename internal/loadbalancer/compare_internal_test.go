@@ -52,6 +52,13 @@ func TestCreateLoadBalancerRequestsEqual(t *testing.T) {
 		r2.Name = "test-1"
 		require.Equal(t, fieldValueNotEqualError("name"), createLoadBalancerRequestsEqual(&r1, &r2))
 	})
+	t.Run("IPAddresses", func(t *testing.T) {
+		t.Parallel()
+		r1 := createRequest(id)
+		r2 := createRequest(id)
+		r2.IPAddresses[0].Address = "0.0.0.1"
+		require.Equal(t, fieldValueNotEqualError("IP addresses"), createLoadBalancerRequestsEqual(&r1, &r2))
+	})
 }
 
 func createRequest(id uuid.UUID) request.CreateLoadBalancerRequest {
@@ -68,6 +75,7 @@ func createRequest(id uuid.UUID) request.CreateLoadBalancerRequest {
 		Backends:         backends(id),
 		Resolvers:        resolvers(),
 		Labels:           upcloudLabels(id),
+		IPAddresses:      ipAddresses(),
 	}
 }
 
@@ -189,6 +197,15 @@ func upcloudLabels(id uuid.UUID) []upcloud.Label {
 		{
 			Key:   clusterIDLabel,
 			Value: id.String(),
+		},
+	}
+}
+
+func ipAddresses() []request.LoadBalancerIPAddress {
+	return []request.LoadBalancerIPAddress{
+		{
+			NetworkName: networkNamePublic,
+			Address:     "0.0.0.0",
 		},
 	}
 }

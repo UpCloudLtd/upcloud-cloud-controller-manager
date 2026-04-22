@@ -178,6 +178,7 @@ func (u *upCloudLoadBalancer) UpdateLoadBalancer(ctx context.Context, lb *upclou
 		Resolvers:        config.Resolvers,
 		MaintenanceDOW:   config.MaintenanceDOW,
 		MaintenanceTime:  config.MaintenanceTime,
+		IPAddresses:      config.IPAddresses,
 	}
 	b, err := json.Marshal(r)
 	if err != nil {

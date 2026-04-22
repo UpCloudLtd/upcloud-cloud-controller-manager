@@ -65,6 +65,14 @@ func (u *UpCloudService) CreateLoadBalancer(_ context.Context, r *request.Create
 	for i := range r.Backends {
 		backends[i] = upcloud.LoadBalancerBackend{Name: r.Backends[i].Name}
 	}
+	ipAddresses := make([]upcloud.LoadBalancerFloatingIPAddress, len(r.IPAddresses))
+	for i := range ipAddresses {
+		ipAddresses[i] = upcloud.LoadBalancerFloatingIPAddress{
+			NetworkName: r.IPAddresses[i].NetworkName,
+			Address:     r.IPAddresses[i].Address,
+		}
+	}
+
 	lb := upcloud.LoadBalancer{
 		UUID:             uuid.NewString(),
 		Name:             r.Name,
@@ -81,6 +89,7 @@ func (u *UpCloudService) CreateLoadBalancer(_ context.Context, r *request.Create
 		MaintenanceTime:  r.MaintenanceTime,
 		DNSName:          fmt.Sprintf("%s.example.com", r.Name),
 		OperationalState: upcloud.LoadBalancerOperationalStateRunning,
+		IPAddresses:      ipAddresses,
 	}
 	u.loadBalancers = append(u.loadBalancers, lb)
 	return &lb, nil

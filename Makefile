@@ -9,8 +9,7 @@ ifeq ($(GOPROXY),)
 GOPROXY := https://proxy.golang.org
 endif
 export GOPROXY
-
-export LDFLAGS := "-w -s -X 'k8s.io/component-base/version/verflag.programName=UpCloud cloud controller manager' $(shell scripts/version.sh "ldflags")"
+LDFLAGS ?= ""
 ## --------------------------------------
 ## Binaries
 ## --------------------------------------
@@ -18,3 +17,7 @@ export LDFLAGS := "-w -s -X 'k8s.io/component-base/version/verflag.programName=U
 .PHONY: manager
 manager: ## Build cloud controller manager binary in local environment
 	CGO_ENABLED=0 GOPROXY=$(GOPROXY) go build -ldflags $(LDFLAGS) -o $(BIN_DIR)/cloud-controller-manager github.com/UpCloudLtd/upcloud-cloud-controller-manager/cmd/upcloud-cloud-controller-manager
+
+.PHONY: test
+test:
+	go test -race ./...
