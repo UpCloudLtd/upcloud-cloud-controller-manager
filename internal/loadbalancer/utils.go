@@ -1,6 +1,7 @@
 package loadbalancer
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -189,13 +190,13 @@ func serviceHealthCheckURL(service *v1.Service) string {
 }
 
 func loadBalancerName(namespace, serviceName, prefix string) string {
-	shorterNamespace := shortenString(namespace, (loadBalancerNameMaxLength-10)/2)
+	shorterNamespace := shortenString(namespace, (loadBalancerNameMaxLength-19)/2)
 	base := fmt.Sprintf("%s-%s", shorterNamespace, serviceName)
-	base = shortenString(base, loadBalancerNameMaxLength-9)
+	base = shortenString(base, loadBalancerNameMaxLength-18)
 
 	shortPrefix := shortenString(prefix, 8)
-
-	n := fmt.Sprintf("%s-%s", base, shortPrefix)
+	hashIdentifier := hashIdentifiers(namespace, serviceName, prefix)
+	n := fmt.Sprintf("%s-%s-%s", base, shortPrefix, hashIdentifier)
 	return n
 }
 
@@ -204,6 +205,14 @@ func shortenString(s string, length int) string {
 		return s[:length]
 	}
 	return s
+}
+
+func hashIdentifiers(namespace, serviceName, clusterID string) string {
+	input := fmt.Sprintf("%s:%s:%s", namespace, serviceName, clusterID)
+
+	hash := sha256.Sum256([]byte(input))
+
+	return fmt.Sprintf("%x", hash[:4]) // first 8 chars
 }
 
 func mergeLoadBalancerConfigFromServiceAnnotations(service *v1.Service, r *request.CreateLoadBalancerRequest, plans map[string]upcloud.LoadBalancerPlan) (err error) {
