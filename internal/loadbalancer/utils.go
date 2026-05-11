@@ -188,22 +188,14 @@ func serviceHealthCheckURL(service *v1.Service) string {
 	return "/"
 }
 
-func loadBalancerName(namespace, name, prefix string) string {
-	var n string
-	if prefix != "" {
-		// 'p' contains clusterID or clusterName which can be shortened to 36 chars (loadBalancerIDMaxLength).
-		// That leaves 13 characters for each namespace and name, plus two dashes to separate the name components.
-		if len(prefix) < loadBalancerIDMaxLength {
-			// try to use maximum available space for namespace if prefix is something else than UUID (loadBalancerIDMaxLength)
-			prefix = fmt.Sprintf("%s-%s-", prefix, shortenString(namespace, (loadBalancerNameMaxLength-len(prefix)-2)/2))
-		} else {
-			prefix = fmt.Sprintf("%s-%s-", shortenString(prefix, loadBalancerIDMaxLength), shortenString(namespace, 13))
-		}
-		n = prefix + shortenString(name, loadBalancerNameMaxLength-len(prefix))
-	} else {
-		ns := shortenString(namespace, 31)
-		n = fmt.Sprintf("%s-%s", ns, shortenString(name, loadBalancerNameMaxLength-len(ns)-1))
-	}
+func loadBalancerName(namespace, serviceName, prefix string) string {
+	shorterNamespace := shortenString(namespace, (loadBalancerNameMaxLength-10)/2)
+	base := fmt.Sprintf("%s-%s", shorterNamespace, serviceName)
+	base = shortenString(base, loadBalancerNameMaxLength-9)
+
+	shortPrefix := shortenString(prefix, 8)
+
+	n := fmt.Sprintf("%s-%s", base, shortPrefix)
 	return n
 }
 
