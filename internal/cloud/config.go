@@ -15,6 +15,7 @@ import (
 const (
 	apiUserEnv     string = "UPCLOUD_API_USER"
 	apiPasswordEnv string = "UPCLOUD_API_PASSWORD"
+	apiTokenEnv    string = "UPCLOUD_API_TOKEN"
 )
 
 type ConfigData struct {
@@ -33,6 +34,7 @@ type ConfigData struct {
 type Credentials struct {
 	User     string `yaml:"user"`
 	Password string `yaml:"password"`
+	Token    string `yaml:"token"`
 }
 
 type LabelSelector struct {
@@ -58,17 +60,23 @@ func newConfig(f io.Reader) (config, error) {
 		TypeMeta:   metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{},
 		Data: ConfigData{
-			ClusterDeploymentMode: "",
-			APICredentials: Credentials{
-				User:     os.Getenv(apiUserEnv),
-				Password: os.Getenv(apiPasswordEnv),
-			},
+			ClusterDeploymentMode:  "",
 			NodeScopeSelector:      LabelSelector{},
 			ClusterName:            "",
 			ClusterID:              "",
 			LoadBalancerPlan:       loadbalancer.DefaultPlan,
 			nodeScopeLabelSelector: labels.Everything(),
 		},
+	}
+	if _, present := os.LookupEnv(apiUserEnv); present {
+		c.Data.APICredentials = Credentials{
+			User:     os.Getenv(apiUserEnv),
+			Password: os.Getenv(apiPasswordEnv),
+		}
+	} else {
+		c.Data.APICredentials = Credentials{
+			Token: os.Getenv(apiTokenEnv),
+		}
 	}
 
 	if f == nil {

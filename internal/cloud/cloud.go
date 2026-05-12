@@ -37,6 +37,9 @@ func (c *cloud) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, 
 	eventRecorder := broadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "service-controller"})
 
 	upCloudClient := upc.New(c.cfg.Data.APICredentials.User, c.cfg.Data.APICredentials.Password)
+	if c.cfg.Data.APICredentials.Token != "" {
+		upCloudClient = upc.New("", "", upc.WithBearerAuth(c.cfg.Data.APICredentials.Token))
+	}
 	upCloudService := service.New(upCloudClient)
 
 	c.instances = instance.NewInstancesManager(
