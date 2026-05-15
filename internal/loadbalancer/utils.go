@@ -189,10 +189,11 @@ func serviceHealthCheckURL(service *v1.Service) string {
 	return "/"
 }
 
+// namespace(max 22 chars)-svc(max 23 chars)-clusterShortId(8 chars)-hash(8chars) =
 func loadBalancerName(namespace, serviceName, prefix string) string {
-	shorterNamespace := shortenString(namespace, (loadBalancerNameMaxLength-19)/2)
+	shorterNamespace := shortenString(namespace, 22)
 	base := fmt.Sprintf("%s-%s", shorterNamespace, serviceName)
-	base = shortenString(base, loadBalancerNameMaxLength-18)
+	base = shortenString(base, 46)
 
 	shortPrefix := shortenString(prefix, 8)
 	hashIdentifier := hashIdentifiers(namespace, serviceName, prefix)

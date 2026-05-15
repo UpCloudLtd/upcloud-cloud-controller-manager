@@ -37,9 +37,7 @@ const (
 	newLoadBalancerEventType   string = "NewLoadBalancer"
 	nodeCountLimitReached      string = "NodeCountLimitReached"
 
-	loadBalancerNameMaxLength int = 64
-	loadBalancerIDMaxLength   int = 36
-	defaultMaxBackendMembers  int = 100
+	defaultMaxBackendMembers int = 100
 
 	certificateBundleNameMaxLength int    = 64
 	certificateBundleNameSuffix    string = "-tls"
