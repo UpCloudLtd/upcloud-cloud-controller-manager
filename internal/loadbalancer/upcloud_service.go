@@ -200,6 +200,12 @@ func (u *upCloudLoadBalancer) newCreateRequest(ctx context.Context, service *v1.
 		namePrefix = u.config.clusterID
 	}
 	name := loadBalancerName(service.GetNamespace(), service.GetName(), namePrefix)
+
+	// Don't override old load balancer names with new naming scheme
+	if existingName, exists := service.Annotations["service.beta.kubernetes.io/upcloud-load-balancer-name"]; exists {
+		name = existingName
+	}
+
 	config, err := createLoadBalancerRequest(service, nodes, plans[u.config.loadBalancerPlan], privateNetworkUUID, name, zone)
 	if err != nil {
 		return nil, err
