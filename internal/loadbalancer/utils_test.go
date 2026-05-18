@@ -27,5 +27,4 @@ func TestLoadBalancer(t *testing.T) {
 	res1 = loadBalancerName("development", "application", "0a73c569-a2d1-481a-917f-?????????")
 	res2 = loadBalancerName("development", "application", "0a73c569-a2d1-481a-917f-b0fdafd78136")
 	require.NotEqual(t, res1, res2)
-
 }
