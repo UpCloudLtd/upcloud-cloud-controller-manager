@@ -15,7 +15,7 @@ import (
 const (
 	apiUserEnv     string = "UPCLOUD_API_USER"
 	apiPasswordEnv string = "UPCLOUD_API_PASSWORD"
-	apiTokenEnv    string = "UPCLOUD_API_TOKEN"
+	apiTokenEnv    string = "UPCLOUD_API_TOKEN" //nolint:gosec
 )
 
 type ConfigData struct {
@@ -95,7 +95,7 @@ func newConfig(f io.Reader) (config, error) {
 	}
 
 	c.Data.nodeScopeLabelSelector = labelSelector
-	if c.Data.APICredentials.User == "" || c.Data.APICredentials.Password == "" {
+	if c.Data.APICredentials.Token == "" && (c.Data.APICredentials.User == "" || c.Data.APICredentials.Password == "") {
 		return c, errors.New("UpCloud user credentials not set")
 	}
 	return c, nil
