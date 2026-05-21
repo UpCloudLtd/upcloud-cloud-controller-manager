@@ -36,3 +36,12 @@ func TestNewConfig(t *testing.T) {
 		"node.kubernetes.io/exclude-from-external-load-balancers": "",
 	}))
 }
+
+func TestNewConfigTokens(t *testing.T) {
+	t.Parallel()
+
+	got, err := newConfig(mock.TokenConfigReader())
+	require.NoError(t, err)
+
+	require.Equal(t, "testtoken", got.Data.APICredentials.Token)
+}
