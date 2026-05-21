@@ -35,7 +35,7 @@ func TestLoadBalancer(t *testing.T) {
 	require.NoError(t, err)
 
 	service := v1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-service", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "test-service", Namespace: "default"}, //nolint:goconst
 	}
 	nodes := newNodes()
 
