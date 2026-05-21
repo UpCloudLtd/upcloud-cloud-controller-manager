@@ -68,15 +68,10 @@ func newConfig(f io.Reader) (config, error) {
 			nodeScopeLabelSelector: labels.Everything(),
 		},
 	}
-	if _, present := os.LookupEnv(apiUserEnv); present {
-		c.Data.APICredentials = Credentials{
-			User:     os.Getenv(apiUserEnv),
-			Password: os.Getenv(apiPasswordEnv),
-		}
-	} else {
-		c.Data.APICredentials = Credentials{
-			Token: os.Getenv(apiTokenEnv),
-		}
+	c.Data.APICredentials = Credentials{
+		User:     os.Getenv(apiUserEnv),
+		Password: os.Getenv(apiPasswordEnv),
+		Token:    os.Getenv(apiTokenEnv),
 	}
 
 	if f == nil {
