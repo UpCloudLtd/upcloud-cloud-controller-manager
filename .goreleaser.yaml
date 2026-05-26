@@ -1,4 +1,5 @@
 project_name: upcloud-cloud-controller-manager
+version: 2
 
 builds:
   - env:
