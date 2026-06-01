@@ -47,7 +47,7 @@ func TestServerInterfacesByType(t *testing.T) {
 	t.Parallel()
 
 	want := upcloud.ServerInterfaceSlice{
-		{Index: 1, Type: "private"},
+		{Index: 1, Type: "private"}, //nolint:goconst
 		{Index: 3, Type: "private"},
 	}
 	got := utils.ServerInterfacesByType(&upcloud.ServerDetails{

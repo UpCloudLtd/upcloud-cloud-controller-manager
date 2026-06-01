@@ -123,15 +123,17 @@ func loadBalancerFrontendFromServicePort(p *v1.ServicePort) request.LoadBalancer
 			InboundProxyProtocol: nil,
 			HTTP2Enabled:         &f,
 		},
+		TLSConfigs: make([]request.LoadBalancerFrontendTLSConfig, 0),
 	}
 }
 
 func loadBalancerBackendFromServicePort(p *v1.ServicePort, nodes []*v1.Node, plan upcloud.LoadBalancerPlan) request.LoadBalancerBackend {
 	portName := servicePortName(p)
 	b := request.LoadBalancerBackend{
-		Name:     portName,
-		Resolver: "",
-		Members:  make([]request.LoadBalancerBackendMember, 0, len(nodes)),
+		Name:       portName,
+		Resolver:   "",
+		Members:    make([]request.LoadBalancerBackendMember, 0, len(nodes)),
+		TLSConfigs: make([]request.LoadBalancerBackendTLSConfig, 0),
 	}
 	for _, node := range nodes {
 		m := request.LoadBalancerBackendMember{
@@ -230,6 +232,7 @@ func mergeLoadBalancerConfigFromServiceAnnotations(service *v1.Service, r *reque
 	r.Frontends = make([]request.LoadBalancerFrontend, 0)
 	r.Labels = make([]upcloud.Label, 0, len(defaults.Labels))
 	r.Networks = make([]request.LoadBalancerNetwork, 0)
+	r.IPAddresses = make([]request.LoadBalancerIPAddress, 0)
 	if err := json.Unmarshal([]byte(config), &r); err != nil {
 		return fmt.Errorf("%w: can't parse annotations[%s], got error: '%v'", errUnsupportedConfiguration, loadBalancerConfigAnnotation, err)
 	}
@@ -281,6 +284,9 @@ func mergeLoadBalancerBackends(backends, defaults []request.LoadBalancerBackend,
 				if backend.Properties == nil {
 					backends[i].Properties = defaultBackend.Properties
 				}
+				if len(backend.TLSConfigs) == 0 {
+					backends[i].TLSConfigs = defaultBackend.TLSConfigs
+				}
 				break
 			}
 		}
@@ -314,7 +320,7 @@ func mergeLoadBalancerFrontends(frontends, defaults []request.LoadBalancerFronte
 				if len(frontend.Rules) == 0 {
 					frontends[i].Rules = defaultFrontend.Rules
 				}
-				if frontend.TLSConfigs == nil && frontend.Mode == upcloud.LoadBalancerModeHTTP {
+				if len(frontend.TLSConfigs) == 0 {
 					frontends[i].TLSConfigs = defaultFrontend.TLSConfigs
 				}
 				if frontend.Properties == nil {

@@ -32,12 +32,10 @@ const (
 	// ServiceExternalTrafficPolicyLabelKey is a key for label that should store external traffic policy type as a value.
 	serviceExternalTrafficPolicyLabel string = "ccm_external_traffic_policy"
 
-	changesDetectedEventType    string = "ChangesDetected"
-	noChangesDetectedEventType  string = "NoChangesDetected"
-	newLoadBalancerEventType    string = "NewLoadBalancer"
-	updateLoadBalancerEventType string = "UpdateLoadBalancer"
-	deleteLoadBalancerEventType string = "DeleteLoadBalancer"
-	nodeCountLimitReached       string = "NodeCountLimitReached"
+	changesDetectedEventType   string = "ChangesDetected"
+	noChangesDetectedEventType string = "NoChangesDetected"
+	newLoadBalancerEventType   string = "NewLoadBalancer"
+	nodeCountLimitReached      string = "NodeCountLimitReached"
 
 	loadBalancerNameMaxLength int = 64
 	loadBalancerIDMaxLength   int = 36

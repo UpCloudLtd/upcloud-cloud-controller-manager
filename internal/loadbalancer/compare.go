@@ -72,6 +72,9 @@ func createLoadBalancerRequestsEqual(r1, r2 *request.CreateLoadBalancerRequest) 
 	if !reflect.DeepEqual(r1.Backends, r2.Backends) {
 		return fieldValueNotEqualError("backends")
 	}
+	if !reflect.DeepEqual(r1.IPAddresses, r2.IPAddresses) {
+		return fieldValueNotEqualError("IP addresses")
+	}
 
 	return nil
 }
@@ -119,6 +122,9 @@ func sortCreateLoadBalancerRequestSlices(r *request.CreateLoadBalancerRequest) {
 	})
 	slices.SortFunc(r.Backends, func(a, b request.LoadBalancerBackend) int {
 		return strings.Compare(a.Name, b.Name)
+	})
+	slices.SortFunc(r.IPAddresses, func(a, b request.LoadBalancerIPAddress) int {
+		return strings.Compare(a.NetworkName, b.NetworkName)
 	})
 }
 

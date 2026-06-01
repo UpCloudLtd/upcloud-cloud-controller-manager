@@ -138,7 +138,7 @@ func (m *manager) ensureNewLoadBalancer(ctx context.Context, clusterName string,
 	m.eventRecorder.Event(service, v1.EventTypeNormal, newLoadBalancerEventType, "Creating load balancer")
 	lb, err := m.svc.CreateLoadBalancer(ctx, service, nodes, clusterName)
 	// Patch service object as soon as we have LB UUID so that we don't loose reference.
-	if lb.UUID != "" && !serviceHasAnnotation(service, loadBalancerIDAnnotation) {
+	if lb != nil && lb.UUID != "" && !serviceHasAnnotation(service, loadBalancerIDAnnotation) {
 		modifiedService := service.DeepCopy()
 		updateServiceAnnotations(modifiedService, lb)
 		if perr := m.patchService(ctx, service, modifiedService); perr != nil {
