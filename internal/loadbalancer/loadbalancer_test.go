@@ -43,7 +43,7 @@ func TestLoadBalancer(t *testing.T) {
 		status, err := m.EnsureLoadBalancer(ctx, "", &service, nodes)
 		require.NoError(t, err)
 		require.Len(t, status.Ingress, 1)
-		require.True(t, strings.HasSuffix(status.Ingress[0].Hostname, "-default-test-service.example.com"))
+		require.True(t, strings.HasPrefix(status.Ingress[0].Hostname, "default-test-service-"))
 	})
 
 	t.Run("GetLoadBalancer", func(t *testing.T) {
@@ -52,7 +52,7 @@ func TestLoadBalancer(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, exists)
 		require.Len(t, status.Ingress, 1)
-		require.True(t, strings.HasSuffix(status.Ingress[0].Hostname, "-default-test-service.example.com"))
+		require.True(t, strings.HasPrefix(status.Ingress[0].Hostname, "default-test-service-"))
 	})
 
 	t.Run("GetLoadBalancerName", func(t *testing.T) {

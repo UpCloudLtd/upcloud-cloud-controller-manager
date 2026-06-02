@@ -1,6 +1,7 @@
 package loadbalancer
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -188,22 +189,15 @@ func serviceHealthCheckURL(service *v1.Service) string {
 	return "/"
 }
 
-func loadBalancerName(namespace, name, prefix string) string {
-	var n string
-	if prefix != "" {
-		// 'p' contains clusterID or clusterName which can be shortened to 36 chars (loadBalancerIDMaxLength).
-		// That leaves 13 characters for each namespace and name, plus two dashes to separate the name components.
-		if len(prefix) < loadBalancerIDMaxLength {
-			// try to use maximum available space for namespace if prefix is something else than UUID (loadBalancerIDMaxLength)
-			prefix = fmt.Sprintf("%s-%s-", prefix, shortenString(namespace, (loadBalancerNameMaxLength-len(prefix)-2)/2))
-		} else {
-			prefix = fmt.Sprintf("%s-%s-", shortenString(prefix, loadBalancerIDMaxLength), shortenString(namespace, 13))
-		}
-		n = prefix + shortenString(name, loadBalancerNameMaxLength-len(prefix))
-	} else {
-		ns := shortenString(namespace, 31)
-		n = fmt.Sprintf("%s-%s", ns, shortenString(name, loadBalancerNameMaxLength-len(ns)-1))
-	}
+// namespace(max 22 chars)-svc(max 23 chars)-clusterShortId(8 chars)-hash(8 chars) =
+func loadBalancerName(namespace, serviceName, prefix string) string {
+	shorterNamespace := shortenString(namespace, 22)
+	base := fmt.Sprintf("%s-%s", shorterNamespace, serviceName)
+	base = shortenString(base, 46)
+
+	shortPrefix := shortenString(prefix, 8)
+	hashIdentifier := hashIdentifiers(namespace, serviceName, prefix)
+	n := fmt.Sprintf("%s-%s-%s", base, shortPrefix, hashIdentifier)
 	return n
 }
 
@@ -212,6 +206,14 @@ func shortenString(s string, length int) string {
 		return s[:length]
 	}
 	return s
+}
+
+func hashIdentifiers(namespace, serviceName, clusterID string) string {
+	input := fmt.Sprintf("%s:%s:%s", namespace, serviceName, clusterID)
+
+	hash := sha256.Sum256([]byte(input))
+
+	return fmt.Sprintf("%x", hash[:4]) // first 8 chars
 }
 
 func mergeLoadBalancerConfigFromServiceAnnotations(service *v1.Service, r *request.CreateLoadBalancerRequest, plans map[string]upcloud.LoadBalancerPlan) (err error) {
