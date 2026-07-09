@@ -123,6 +123,11 @@ func (u *upCloudLoadBalancer) CreateLoadBalancer(ctx context.Context, service *v
 			return lb, fmt.Errorf("failed to create load balancer %s frontend; %w", lb.Name, err)
 		}
 	}
+	// Refresh LB object to get final FE config and latest state.
+	lb, err = u.upcs.GetLoadBalancer(ctx, &request.GetLoadBalancerRequest{UUID: lb.UUID})
+	if err != nil {
+		return lb, fmt.Errorf("failed to refresh LB details; %w", err)
+	}
 	return lb, err
 }
 
@@ -278,12 +283,12 @@ func (u *upCloudLoadBalancer) getOrCreateCertificateBundle(ctx context.Context, 
 		return b, err
 	}
 	if b != nil {
-		// Double check that this certificate contains hostnames that we expect.
+		// Double check that this certificate contains at least one hostname that we expect.
 		// There is possibility that generated `name` is duplicate due to how name shortener works currently.
-		slices.Sort(hostname)
-		slices.Sort(b.Hostnames)
-		if slices.Equal(b.Hostnames, hostname) {
-			return b, nil
+		for i := range hostname {
+			if slices.Contains(b.Hostnames, hostname[i]) {
+				return b, nil
+			}
 		}
 	}
 
