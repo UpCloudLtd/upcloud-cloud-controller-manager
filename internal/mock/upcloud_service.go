@@ -2,6 +2,7 @@ package mock
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
@@ -52,9 +53,10 @@ func (u *UpCloudService) CreateLoadBalancer(_ context.Context, r *request.Create
 			id = uuid.NewString()
 		}
 		networks[i] = upcloud.LoadBalancerNetwork{
-			Type: r.Networks[i].Type,
-			Name: r.Networks[i].Name,
-			UUID: id,
+			Type:   r.Networks[i].Type,
+			Name:   r.Networks[i].Name,
+			UUID:   id,
+			Family: r.Networks[i].Family,
 		}
 	}
 	frontends := make([]upcloud.LoadBalancerFrontend, len(r.Frontends))
@@ -63,7 +65,10 @@ func (u *UpCloudService) CreateLoadBalancer(_ context.Context, r *request.Create
 	}
 	backends := make([]upcloud.LoadBalancerBackend, len(r.Backends))
 	for i := range r.Backends {
-		backends[i] = upcloud.LoadBalancerBackend{Name: r.Backends[i].Name}
+		backends[i] = upcloud.LoadBalancerBackend{
+			Name:       r.Backends[i].Name,
+			Properties: r.Backends[i].Properties,
+		}
 	}
 	ipAddresses := make([]upcloud.LoadBalancerFloatingIPAddress, len(r.IPAddresses))
 	for i := range ipAddresses {
@@ -73,6 +78,9 @@ func (u *UpCloudService) CreateLoadBalancer(_ context.Context, r *request.Create
 		}
 	}
 
+	labels := make([]upcloud.Label, len(r.Labels))
+	copy(labels, r.Labels)
+
 	lb := upcloud.LoadBalancer{
 		UUID:             uuid.NewString(),
 		Name:             r.Name,
@@ -80,7 +88,7 @@ func (u *UpCloudService) CreateLoadBalancer(_ context.Context, r *request.Create
 		Plan:             r.Plan,
 		NetworkUUID:      r.NetworkUUID,
 		Networks:         networks,
-		Labels:           r.Labels,
+		Labels:           labels,
 		Frontends:        frontends,
 		Backends:         backends,
 		CreatedAt:        time.Now().UTC(),
@@ -90,6 +98,7 @@ func (u *UpCloudService) CreateLoadBalancer(_ context.Context, r *request.Create
 		DNSName:          fmt.Sprintf("%s.example.com", r.Name),
 		OperationalState: upcloud.LoadBalancerOperationalStateRunning,
 		IPAddresses:      ipAddresses,
+		ConfiguredStatus: r.ConfiguredStatus,
 	}
 	u.loadBalancers = append(u.loadBalancers, lb)
 	return &lb, nil
@@ -100,10 +109,22 @@ func (u *UpCloudService) GetLoadBalancer(_ context.Context, r *request.GetLoadBa
 	defer u.mu.Unlock()
 	for i := range u.loadBalancers {
 		if u.loadBalancers[i].UUID == r.UUID {
-			return &u.loadBalancers[i], nil
+			lb := upcloud.LoadBalancer{}
+			copyLoadBalancer(&lb, &u.loadBalancers[i])
+			return &lb, nil
 		}
 	}
 	return nil, &upcloud.Problem{Status: http.StatusNotFound}
+}
+
+func copyLoadBalancer(dst, src *upcloud.LoadBalancer) {
+	j, err := json.Marshal(src)
+	if err != nil {
+		panic(err)
+	}
+	if err = json.Unmarshal(j, &dst); err != nil {
+		panic(err)
+	}
 }
 
 func (u *UpCloudService) GetLoadBalancers(_ context.Context, _ *request.GetLoadBalancersRequest) ([]upcloud.LoadBalancer, error) {
@@ -119,13 +140,61 @@ func (u *UpCloudService) GetZones(_ context.Context) (*upcloud.Zones, error) {
 }
 
 func (u *UpCloudService) CreateLoadBalancerFrontend(_ context.Context, r *request.CreateLoadBalancerFrontendRequest) (*upcloud.LoadBalancerFrontend, error) {
-	return &upcloud.LoadBalancerFrontend{Name: r.Frontend.Name}, nil
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	for i := range u.loadBalancers {
+		if u.loadBalancers[i].UUID == r.ServiceUUID {
+			fe := u.newLoadBalancerFrontendFromRequest(&r.Frontend)
+			u.loadBalancers[i].Frontends = append(u.loadBalancers[i].Frontends, fe)
+			return &fe, nil
+		}
+	}
+	return nil, &upcloud.Problem{Status: http.StatusNotFound}
+}
+
+func (u *UpCloudService) newLoadBalancerFrontendFromRequest(r *request.LoadBalancerFrontend) upcloud.LoadBalancerFrontend {
+	tlsconfigs := make([]upcloud.LoadBalancerFrontendTLSConfig, 0)
+	for i := range r.TLSConfigs {
+		for j := range u.certificateBundles {
+			if u.certificateBundles[j].Name == r.TLSConfigs[i].Name {
+				tlsconfigs = append(tlsconfigs, upcloud.LoadBalancerFrontendTLSConfig{
+					Name:                  r.TLSConfigs[i].Name,
+					CertificateBundleUUID: u.certificateBundles[j].UUID,
+				})
+			}
+		}
+	}
+	return upcloud.LoadBalancerFrontend{
+		Name:           r.Name,
+		TLSConfigs:     tlsconfigs,
+		Mode:           r.Mode,
+		Port:           r.Port,
+		DefaultBackend: r.DefaultBackend,
+		Networks:       r.Networks,
+		Properties:     r.Properties,
+	}
 }
 
 func (u *UpCloudService) CreateLoadBalancerCertificateBundle(_ context.Context, r *request.CreateLoadBalancerCertificateBundleRequest) (*upcloud.LoadBalancerCertificateBundle, error) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	b := upcloud.LoadBalancerCertificateBundle{Name: r.Name, Type: r.Type}
+
+	for i := range u.certificateBundles {
+		if u.certificateBundles[i].Name == r.Name {
+			return nil, &upcloud.Problem{Status: http.StatusBadRequest, Title: "cert bundle already exists"}
+		}
+	}
+
+	hostnames := make([]string, len(r.Hostnames)+1)
+	copy(hostnames, r.Hostnames)
+	// Append random hostname to ensure that we support also bundles with custom hostnames.
+	hostnames[len(r.Hostnames)] = "example.com"
+	b := upcloud.LoadBalancerCertificateBundle{
+		UUID:      uuid.NewString(),
+		Name:      r.Name,
+		Type:      r.Type,
+		Hostnames: hostnames,
+	}
 	u.certificateBundles = append(u.certificateBundles, b)
 	return &b, nil
 }

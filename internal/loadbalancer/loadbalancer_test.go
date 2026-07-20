@@ -3,6 +3,7 @@ package loadbalancer_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -17,13 +18,17 @@ import (
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1types "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
 	cloudprovider "k8s.io/cloud-provider"
 )
 
-const serverUUID string = "006ec10e-bbc8-452f-8987-d80f77595484"
+const (
+	serverUUID                 string = "006ec10e-bbc8-452f-8987-d80f77595484"
+	loadBalancerNameAnnotation string = "service.beta.kubernetes.io/upcloud-load-balancer-name"
+)
 
 func TestLoadBalancer(t *testing.T) {
 	t.Parallel()
@@ -31,34 +36,29 @@ func TestLoadBalancer(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	m, err := newManager(ctx)
+	cli := mock.NewControllerClientBuilder().ClientOrDie("test-client")
+	m, err := newManager(ctx, cli)
 	require.NoError(t, err)
 
-	service := v1.Service{
+	service := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-service", Namespace: "default"}, //nolint:goconst
 	}
 	nodes := newNodes()
 
 	t.Run("EnsureLoadBalancer", func(t *testing.T) {
-		status, err := m.EnsureLoadBalancer(ctx, "", &service, nodes)
+		status, err := m.EnsureLoadBalancer(ctx, "", service, nodes)
 		require.NoError(t, err)
 		require.Len(t, status.Ingress, 1)
 		require.True(t, strings.HasSuffix(status.Ingress[0].Hostname, "-default-test-service.example.com"))
-	})
 
-	t.Run("GetLoadBalancer", func(t *testing.T) {
-		t.Parallel()
-		status, exists, err := m.GetLoadBalancer(ctx, "", &service)
+		// Refresh load balancer service object.
+		service, err = cli.CoreV1().Services("default").Get(ctx, service.Name, metav1.GetOptions{})
 		require.NoError(t, err)
-		require.True(t, exists)
-		require.Len(t, status.Ingress, 1)
-		require.True(t, strings.HasSuffix(status.Ingress[0].Hostname, "-default-test-service.example.com"))
-	})
-
-	t.Run("GetLoadBalancerName", func(t *testing.T) {
-		t.Parallel()
-		name := m.GetLoadBalancerName(ctx, "", &service)
-		require.Equal(t, "test-service", name)
+		require.NotEmpty(t, service.Annotations["service.beta.kubernetes.io/upcloud-load-balancer-id"])
+		require.True(t, strings.HasSuffix(
+			service.Annotations[loadBalancerNameAnnotation],
+			fmt.Sprintf("-%s-%s", service.Namespace, service.Name),
+		))
 	})
 
 	t.Run("UpdateLoadBalancer", func(t *testing.T) {
@@ -72,13 +72,28 @@ func TestLoadBalancer(t *testing.T) {
 			},
 			Spec: v1.NodeSpec{ProviderID: serverUUID},
 		})
-		require.NoError(t, m.UpdateLoadBalancer(ctx, "", &service, nodes))
+		require.NoError(t, m.UpdateLoadBalancer(ctx, "", service, nodes))
+	})
+
+	t.Run("GetLoadBalancer", func(t *testing.T) {
+		t.Parallel()
+		status, exists, err := m.GetLoadBalancer(ctx, "", service)
+		require.NoError(t, err)
+		require.True(t, exists)
+		require.Len(t, status.Ingress, 1)
+		require.True(t, strings.HasSuffix(status.Ingress[0].Hostname, "-default-test-service.example.com"))
+	})
+
+	t.Run("GetLoadBalancerName", func(t *testing.T) {
+		t.Parallel()
+		name := m.GetLoadBalancerName(ctx, "", service)
+		require.Equal(t, service.Annotations[loadBalancerNameAnnotation], name)
 	})
 
 	t.Run("EnsureLoadBalancerDeleted", func(t *testing.T) {
 		// NOTE: This should be safe to run in parallel because API mock doesn't actually remove LB.
 		t.Parallel()
-		require.NoError(t, m.EnsureLoadBalancerDeleted(ctx, "", &service))
+		require.NoError(t, m.EnsureLoadBalancerDeleted(ctx, "", service))
 	})
 }
 
@@ -90,7 +105,8 @@ func TestLoadBalancerCustomConfig(t *testing.T) {
 
 	upcs := newUpCloudMockService()
 
-	m, err := newManagerWithService(ctx, upcs)
+	cli := mock.NewControllerClientBuilder().ClientOrDie("test-client")
+	m, err := newManagerWithService(ctx, cli, upcs)
 	require.NoError(t, err)
 
 	config := &request.CreateLoadBalancerRequest{
@@ -125,13 +141,12 @@ func TestLoadBalancerCustomConfig(t *testing.T) {
 	})
 }
 
-func newManager(ctx context.Context) (cloudprovider.LoadBalancer, error) {
+func newManager(ctx context.Context, client clientset.Interface) (cloudprovider.LoadBalancer, error) {
 	upcs := newUpCloudMockService()
-	return newManagerWithService(ctx, upcs)
+	return newManagerWithService(ctx, client, upcs)
 }
 
-func newManagerWithService(ctx context.Context, upcs loadbalancer.UpCloudService) (cloudprovider.LoadBalancer, error) {
-	client := mock.NewControllerClientBuilder().ClientOrDie("test-client")
+func newManagerWithService(ctx context.Context, client clientset.Interface, upcs loadbalancer.UpCloudService) (cloudprovider.LoadBalancer, error) {
 	if _, err := client.CoreV1().Services("default").Create(ctx, &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-service"},
 		Spec: v1.ServiceSpec{
