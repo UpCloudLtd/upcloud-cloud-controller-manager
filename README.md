@@ -63,8 +63,8 @@ If node is bootstrapped successfully, then special taints removed from the node,
 Load balancer provisioned based on the service spec. For every item in `service.spec.ports` array a pair of front end and backend created
 to allow to serve several ports per load-balancer. Each fronted/backend can be configured through annotations (see below),
 configuration matching based on:
- - for `frontends`: `name` and `port` in `service.beta.kubernetes.io/upcloud-loadbalancer-config` should match to `service.spec.ports` item. Then the configuration will be applied for this frontend
- - for `backends`: `name` in `service.beta.kubernetes.io/upcloud-loadbalancer-config` should match to `service.spec.ports` item. Then the configuration will be applied for this backend
+ - for `frontends`: `name` and `port` in `service.beta.kubernetes.io/upcloud-load-balancer-config` should match to `service.spec.ports` item. Then the configuration will be applied for this frontend
+ - for `backends`: `name` in `service.beta.kubernetes.io/upcloud-load-balancer-config` should match to `service.spec.ports` item. Then the configuration will be applied for this backend
 
 ### Configuration
 Load balancers can be configured with annotations.
@@ -176,7 +176,7 @@ In order to fulfill it, the following API is used: https://developers.upcloud.co
 (the certificate key type is `ecdsa`).
 
 The auto TLS provision is supported only for frontends with `mode` set to `http`.
-To enable this feature, you need to provide specific frontend config in `service.beta.kubernetes.io/upcloud-loadbalancer-config`:
+To enable this feature, you need to provide specific frontend config in `service.beta.kubernetes.io/upcloud-load-balancer-config`:
 ```json
  "frontends": [
         {
