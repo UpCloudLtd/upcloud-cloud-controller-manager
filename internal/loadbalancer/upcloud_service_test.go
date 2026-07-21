@@ -22,7 +22,7 @@ func TestService(t *testing.T) {
 	lbPlan := "essentials"
 
 	lbs := loadbalancer.NewLoadBalancerService(upcs, mock.NewUpCloudClient(),
-		loadbalancer.NewConfig(clusterID, lbPlan, 100))
+		loadbalancer.NewConfig(clusterID, "test-cluster", lbPlan, 100))
 
 	nodes := newNodes()
 

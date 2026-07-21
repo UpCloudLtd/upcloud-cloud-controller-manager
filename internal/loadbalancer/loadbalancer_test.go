@@ -156,7 +156,7 @@ func newManagerWithService(ctx context.Context, client clientset.Interface, upcs
 		return nil, err
 	}
 
-	config := loadbalancer.NewConfig(uuid.NewString(), "development", 10)
+	config := loadbalancer.NewConfig(uuid.NewString(), "test-cluster", "development", 10)
 	loadBalancerService := loadbalancer.NewLoadBalancerService(upcs, mock.NewUpCloudClient(), config)
 	broadcaster := record.NewBroadcaster()
 	broadcaster.StartStructuredLogging(0)

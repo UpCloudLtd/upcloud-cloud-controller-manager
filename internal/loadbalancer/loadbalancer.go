@@ -37,11 +37,21 @@ type manager struct {
 	mu  sync.Mutex
 }
 
+// configuredClusterName overwrites provided cluster name with the one in the config.
+func (m *manager) configuredClusterName(clusterName string) string {
+	if m.config.clusterName != "" {
+		return m.config.clusterName
+	}
+	return clusterName
+}
+
 // GetLoadBalancer returns whether the specified load balancer exists, and
 // if so, what its status is.
 // Implementations must treat the *v1.Service parameter as read-only and not modify it.
 // Parameter 'clusterName' is the name of the cluster as presented to kube-controller-manager
 func (m *manager) GetLoadBalancer(ctx context.Context, clusterName string, service *v1.Service) (status *v1.LoadBalancerStatus, exists bool, err error) {
+	clusterName = m.configuredClusterName(clusterName)
+
 	m.log.Infof("getting load balancer %s/%s status", clusterName, service.GetName())
 	lb, err := m.svc.GetLoadBalancer(ctx, clusterName, service)
 	if err != nil {
@@ -62,6 +72,8 @@ func (m *manager) GetLoadBalancer(ctx context.Context, clusterName string, servi
 // GetLoadBalancerName returns the name of the load balancer. Implementations must treat the
 // *v1.Service parameter as read-only and not modify it.
 func (m *manager) GetLoadBalancerName(_ context.Context, clusterName string, service *v1.Service) string {
+	clusterName = m.configuredClusterName(clusterName)
+
 	m.log.Infof("getting load balancer %s/%s name", clusterName, service.GetName())
 	annotations := service.GetAnnotations()
 	if annotations == nil {
@@ -80,6 +92,8 @@ func (m *manager) GetLoadBalancerName(_ context.Context, clusterName string, ser
 func (m *manager) EnsureLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, nodes []*v1.Node) (*v1.LoadBalancerStatus, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	clusterName = m.configuredClusterName(clusterName)
+
 	m.log.Infof("ensuring load balancer %s/%s", clusterName, service.GetName())
 	lb, err := m.svc.GetLoadBalancer(ctx, clusterName, service)
 	if err != nil && !errors.Is(err, errNotFound) {
@@ -168,6 +182,8 @@ func (m *manager) ensureNewLoadBalancer(ctx context.Context, clusterName string,
 // parameters as read-only and not modify them.
 // Parameter 'clusterName' is the name of the cluster as presented to kube-controller-manager
 func (m *manager) UpdateLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, nodes []*v1.Node) error {
+	clusterName = m.configuredClusterName(clusterName)
+
 	m.log.Infof("updating load balancer %s/%s", clusterName, service.GetName())
 	lb, err := m.svc.GetLoadBalancer(ctx, clusterName, service)
 	if err != nil {
@@ -200,6 +216,8 @@ func (m *manager) UpdateLoadBalancer(ctx context.Context, clusterName string, se
 // Implementations must treat the *v1.Service parameter as read-only and not modify it.
 // Parameter 'clusterName' is the name of the cluster as presented to kube-controller-manager
 func (m *manager) EnsureLoadBalancerDeleted(ctx context.Context, clusterName string, service *v1.Service) error {
+	clusterName = m.configuredClusterName(clusterName)
+
 	m.log.Infof("ensuring load balancer %s/%s is deleted", clusterName, service.GetName())
 	lb, err := m.svc.GetLoadBalancer(ctx, clusterName, service)
 	if err != nil {
