@@ -5,6 +5,11 @@ See updating [Changelog example here](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+## [1.2.3]
+
+### Changed
+- loadbalancer: overwrite cluster name if set in the config
+
 ## [1.2.2]
 
 ### Changed
@@ -31,7 +36,8 @@ See updating [Changelog example here](https://keepachangelog.com/en/1.0.0/)
 
 First open source release
 
-[Unreleased]: https://github.com/UpCloudLtd/upcloud-cloud-controller-manager/compare/v1.2.2...HEAD
+[Unreleased]: https://github.com/UpCloudLtd/upcloud-cloud-controller-manager/compare/v1.2.3...HEAD
+[1.2.3]: https://github.com/UpCloudLtd/upcloud-cloud-controller-manager/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/UpCloudLtd/upcloud-cloud-controller-manager/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/UpCloudLtd/upcloud-cloud-controller-manager/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/UpCloudLtd/upcloud-cloud-controller-manager/compare/v1.1.0...v1.2.0
