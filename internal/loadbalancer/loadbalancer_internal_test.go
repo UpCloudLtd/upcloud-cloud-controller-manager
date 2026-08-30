@@ -19,7 +19,7 @@ func TestLoadBalancerInternal(t *testing.T) {
 	t.Parallel()
 
 	cli := mock.NewControllerClientBuilder().ClientOrDie("test-client")
-	cfg := NewConfig(uuid.NewString(), "test-cluster", "essentials", 10)
+	cfg := NewConfig(uuid.NewString(), "test-cluster", "essentials", 10, "")
 	broadcaster := record.NewBroadcaster()
 	m := &manager{
 		svc:           nil,

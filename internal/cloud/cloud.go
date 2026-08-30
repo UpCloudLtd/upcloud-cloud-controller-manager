@@ -54,6 +54,7 @@ func (c *cloud) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, 
 		c.cfg.Data.ClusterName,
 		c.cfg.Data.LoadBalancerPlan,
 		c.cfg.Data.LoadBalancerMaxBackendMembers,
+		c.cfg.Data.LoadBalancerBackendAddressSource,
 	)
 	loadBalancerService := loadbalancer.NewLoadBalancerService(upCloudService, upCloudClient, loadbalancerConfig)
 	c.loadbalancers = loadbalancer.NewLoadBalancerManager(

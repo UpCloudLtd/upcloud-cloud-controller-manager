@@ -205,7 +205,15 @@ func (u *upCloudLoadBalancer) newCreateRequest(ctx context.Context, service *v1.
 		namePrefix = u.config.clusterID
 	}
 	name := loadBalancerName(service.GetNamespace(), service.GetName(), namePrefix)
-	config, err := createLoadBalancerRequest(service, nodes, plans[u.config.loadBalancerPlan], privateNetworkUUID, name, zone)
+	// A nil map keeps the InternalIP behaviour in the request builder.
+	var backendAddresses map[string]string
+	if u.usesPrivateNetworkBackendAddresses() {
+		backendAddresses, err = u.backendAddresses(ctx, nodes, privateNetworkUUID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	config, err := createLoadBalancerRequest(service, nodes, plans[u.config.loadBalancerPlan], privateNetworkUUID, name, zone, backendAddresses)
 	if err != nil {
 		return nil, err
 	}
@@ -214,6 +222,52 @@ func (u *upCloudLoadBalancer) newCreateRequest(ctx context.Context, service *v1.
 		return nil, err
 	}
 	return config, nil
+}
+
+// usesPrivateNetworkBackendAddresses reports whether backend members should
+// carry the node's address on the load balancer's own private network rather
+// than its Kubernetes InternalIP.
+func (u *upCloudLoadBalancer) usesPrivateNetworkBackendAddresses() bool {
+	return u.config != nil && u.config.backendAddressSource == BackendAddressSourcePrivateNetwork
+}
+
+// backendAddresses answers the address each node should be reached on as a
+// backend member, keyed by node name. It is resolved once per request rather
+// than per service port.
+func (u *upCloudLoadBalancer) backendAddresses(ctx context.Context, nodes []*v1.Node, privateNetworkUUID string) (map[string]string, error) {
+	addresses := make(map[string]string, len(nodes))
+	for _, node := range nodes {
+		server, err := u.serverDetails(ctx, node)
+		if err != nil {
+			return nil, err
+		}
+		address, err := serverAddressOnNetwork(server, privateNetworkUUID)
+		if err != nil {
+			return nil, fmt.Errorf("resolving backend address for node %s failed; %w", node.Name, err)
+		}
+		addresses[node.Name] = address
+	}
+	return addresses, nil
+}
+
+// serverAddressOnNetwork answers the server's IPv4 address on one SDN
+// network. A server is attached to a private network at most once, so the
+// first match is the address.
+func serverAddressOnNetwork(server *upcloud.ServerDetails, networkUUID string) (string, error) {
+	if server == nil {
+		return "", fmt.Errorf("server details not available; %w", errAmbiguity)
+	}
+	for _, inf := range server.Networking.Interfaces {
+		if inf.Network != networkUUID {
+			continue
+		}
+		for _, address := range inf.IPAddresses {
+			if address.Family == upcloud.IPAddressFamilyIPv4 {
+				return address.Address, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("server %s has no IPv4 address on network %s; %w", server.UUID, networkUUID, errAmbiguity)
 }
 
 func (u *upCloudLoadBalancer) serverDetails(ctx context.Context, node *v1.Node) (*upcloud.ServerDetails, error) {

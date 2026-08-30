@@ -35,7 +35,7 @@ func (r *replaceLoadBalancerRequest) RequestURL() string {
 	return fmt.Sprintf("/load-balancer/%s", r.UUID)
 }
 
-func createLoadBalancerRequest(service *v1.Service, nodes []*v1.Node, plan upcloud.LoadBalancerPlan, privateNetworkUUID, name, zone string) (*request.CreateLoadBalancerRequest, error) {
+func createLoadBalancerRequest(service *v1.Service, nodes []*v1.Node, plan upcloud.LoadBalancerPlan, privateNetworkUUID, name, zone string, backendAddresses map[string]string) (*request.CreateLoadBalancerRequest, error) {
 	if err := validateServiceExternalTrafficPolicy(service); err != nil {
 		err := errors.Join(err, errUnsupportedConfiguration)
 		return nil, err
@@ -71,7 +71,7 @@ func createLoadBalancerRequest(service *v1.Service, nodes []*v1.Node, plan upclo
 	// we create a frontend config and corresponding backend config
 	for i := range service.Spec.Ports {
 		r.Frontends[i] = loadBalancerFrontendFromServicePort(&service.Spec.Ports[i])
-		backend := loadBalancerBackendFromServicePort(&service.Spec.Ports[i], nodes, plan)
+		backend := loadBalancerBackendFromServicePort(&service.Spec.Ports[i], nodes, plan, backendAddresses)
 		if service.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal {
 			// When ETP is set to `Local`, Kubernetes (proxy) provides health check service running in the worker nodes,
 			// that can be used to query service state on the particular node.

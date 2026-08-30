@@ -37,6 +37,16 @@ data:
   clusterID: ""
   loadBalancerPlan: ""
   loadBalancerMaxBackendMembers: 100
+  # Where a load balancer backend member's address is taken from:
+  #   node-internal-ip (default) - the node's Kubernetes InternalIP
+  #   private-network            - the node's address on the SDN private
+  #                                network the load balancer is attached to
+  # Use private-network when the node's InternalIP is not an address the
+  # load balancer can reach, which is the case on a cluster that advertises
+  # an overlay address (e.g. a WireGuard mesh spanning zones) as the node IP.
+  # With the default the members are accepted by the API but never pass a
+  # health check, so the service reports success and serves nothing.
+  loadBalancerBackendAddressSource: node-internal-ip
   nodeScopeSelector: #Describe selector that defines the scope of the nodes, that CCM will operate on
                      #https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
     matchExpressions:

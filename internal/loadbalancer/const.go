@@ -3,6 +3,25 @@ package loadbalancer
 const (
 	DefaultPlan string = "development"
 
+	// BackendAddressSourceNodeInternalIP builds backend members from the
+	// node's Kubernetes InternalIP. This is the default and what the
+	// controller has always done.
+	BackendAddressSourceNodeInternalIP string = "node-internal-ip"
+
+	// BackendAddressSourcePrivateNetwork builds backend members from the
+	// address the node's server holds on the SDN private network the load
+	// balancer itself is attached to.
+	//
+	// A managed load balancer reaches its backends over that private
+	// network, so the node's address on it is the only address guaranteed
+	// to be routable from the load balancer. The InternalIP is normally
+	// the same address, but it need not be: a cluster that advertises an
+	// overlay address (a WireGuard mesh spanning zones, for example) as
+	// the node IP leaves every member unreachable, and because the API
+	// accepts the members without complaint the service is created,
+	// reports success and then never passes a health check.
+	BackendAddressSourcePrivateNetwork string = "private-network"
+
 	// loadBalancerIDAnnotation is the annotation specifying the load balancer ID
 	// used to enable fast retrievals of load balancers from the API by UUID.
 	loadBalancerIDAnnotation = "service.beta.kubernetes.io/upcloud-load-balancer-id"

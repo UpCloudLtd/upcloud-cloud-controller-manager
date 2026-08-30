@@ -127,7 +127,11 @@ func loadBalancerFrontendFromServicePort(p *v1.ServicePort) request.LoadBalancer
 	}
 }
 
-func loadBalancerBackendFromServicePort(p *v1.ServicePort, nodes []*v1.Node, plan upcloud.LoadBalancerPlan) request.LoadBalancerBackend {
+// loadBalancerBackendFromServicePort builds the backend for one service
+// port. When addresses is non-nil it holds the address to reach each node on,
+// keyed by node name, and a node missing from it is skipped; when it is nil
+// members are built from the nodes' InternalIPs.
+func loadBalancerBackendFromServicePort(p *v1.ServicePort, nodes []*v1.Node, plan upcloud.LoadBalancerPlan, addresses map[string]string) request.LoadBalancerBackend {
 	portName := servicePortName(p)
 	b := request.LoadBalancerBackend{
 		Name:       portName,
@@ -144,6 +148,13 @@ func loadBalancerBackendFromServicePort(p *v1.ServicePort, nodes []*v1.Node, pla
 			Type:        upcloud.LoadBalancerBackendMemberTypeStatic,
 			IP:          "",
 			Port:        int(p.NodePort),
+		}
+		if addresses != nil {
+			if ip, ok := addresses[node.Name]; ok {
+				m.IP = ip
+				b.Members = append(b.Members, m)
+			}
+			continue
 		}
 		for _, addr := range node.Status.Addresses {
 			if addr.Type == v1.NodeInternalIP {

@@ -27,6 +27,10 @@ type ConfigData struct {
 
 	LoadBalancerPlan              string `yaml:"loadBalancerPlan"`
 	LoadBalancerMaxBackendMembers int    `yaml:"loadBalancerMaxBackendMembers"`
+	// LoadBalancerBackendAddressSource selects where a backend member's
+	// address comes from: "node-internal-ip" (default) or
+	// "private-network". See the loadbalancer package constants.
+	LoadBalancerBackendAddressSource string `yaml:"loadBalancerBackendAddressSource"`
 
 	nodeScopeLabelSelector labels.Selector
 }
@@ -60,12 +64,13 @@ func newConfig(f io.Reader) (config, error) {
 		TypeMeta:   metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{},
 		Data: ConfigData{
-			ClusterDeploymentMode:  "",
-			NodeScopeSelector:      LabelSelector{},
-			ClusterName:            "",
-			ClusterID:              "",
-			LoadBalancerPlan:       loadbalancer.DefaultPlan,
-			nodeScopeLabelSelector: labels.Everything(),
+			ClusterDeploymentMode:            "",
+			NodeScopeSelector:                LabelSelector{},
+			ClusterName:                      "",
+			ClusterID:                        "",
+			LoadBalancerPlan:                 loadbalancer.DefaultPlan,
+			LoadBalancerBackendAddressSource: loadbalancer.BackendAddressSourceNodeInternalIP,
+			nodeScopeLabelSelector:           labels.Everything(),
 		},
 	}
 	c.Data.APICredentials = Credentials{
@@ -92,6 +97,16 @@ func newConfig(f io.Reader) (config, error) {
 	c.Data.nodeScopeLabelSelector = labelSelector
 	if c.Data.APICredentials.Token == "" && (c.Data.APICredentials.User == "" || c.Data.APICredentials.Password == "") {
 		return c, errors.New("UpCloud user credentials not set")
+	}
+	switch c.Data.LoadBalancerBackendAddressSource {
+	case "":
+		c.Data.LoadBalancerBackendAddressSource = loadbalancer.BackendAddressSourceNodeInternalIP
+	case loadbalancer.BackendAddressSourceNodeInternalIP, loadbalancer.BackendAddressSourcePrivateNetwork:
+	default:
+		return c, fmt.Errorf("unknown loadBalancerBackendAddressSource %q, want %q or %q",
+			c.Data.LoadBalancerBackendAddressSource,
+			loadbalancer.BackendAddressSourceNodeInternalIP,
+			loadbalancer.BackendAddressSourcePrivateNetwork)
 	}
 	return c, nil
 }
