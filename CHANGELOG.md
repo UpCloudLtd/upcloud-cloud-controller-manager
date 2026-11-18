@@ -6,7 +6,9 @@ See updating [Changelog example here](https://keepachangelog.com/en/1.0.0/)
 ## [Unreleased]
 
 ### Changed
-- Switch from go.yaml.in/yaml/v2 to go.yaml.in/yaml/v3
+- switch from go.yaml.in/yaml/v2 to go.yaml.in/yaml/v3
+- update Go from 1.25 to 1.27
+- update `k8s.io/cloud-provider` lib from v0.31 to v0.36
 
 ## [1.2.3]
 
