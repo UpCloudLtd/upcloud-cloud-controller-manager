@@ -5,6 +5,9 @@ See updating [Changelog example here](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Changed
+- Switch from go.yaml.in/yaml/v2 to go.yaml.in/yaml/v3
+
 ## [1.2.3]
 
 ### Changed

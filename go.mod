@@ -6,7 +6,7 @@ require (
 	github.com/UpCloudLtd/upcloud-go-api/v8 v8.35.0
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.11.1
-	go.yaml.in/yaml/v2 v2.4.4
+	go.yaml.in/yaml/v3 v3.0.6
 	k8s.io/api v0.31.10
 	k8s.io/apimachinery v0.31.10
 	k8s.io/client-go v0.31.10
